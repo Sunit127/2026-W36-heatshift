@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102b27">
+  <meta name="description" content="A private, offline-first heat shift planning aid for workers and small teams.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+  <title>HeatShift — plan hot work before it starts</title>
+</head>
+<body>
+  <a class="skip-link" href="#planner">Skip to planner</a>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="HeatShift home"><span aria-hidden="true">●</span> HeatShift</a>
+    <div class="top-actions"><span id="save-status" class="save-status" role="status">Stored on this device</span><button class="button ghost small" id="install-button" hidden>Install app</button></div>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div>
+        <p class="eyebrow">Offline heat-shift planning</p>
+        <h1 id="hero-title">Make the hot part of the day less improvised.</h1>
+        <p class="hero-copy">Turn conditions and work demands into a clear team briefing: planning tier, check-in rhythm, supplies, and a printable shift card.</p>
+        <div class="hero-actions"><a class="button primary" href="#planner">Plan a shift</a><button class="button secondary" id="load-sample">Load sample</button></div>
+        <p class="privacy-line">No account. No location tracking. Your plans stay in this browser.</p>
+      </div>
+      <aside class="hero-card" aria-label="Today’s planning flow">
+        <span class="card-kicker">Before work starts</span>
+        <ol><li>Describe the conditions</li><li>Review the planning tier</li><li>Brief the team and save the card</li></ol>
+      </aside>
+    </section>
+
+    <section class="notice" aria-label="Important safety notice">
+      <strong>Planning aid, not a safety limit.</strong> Heat illness can occur at any tier. Follow local rules and your employer’s heat program. Stop work and seek emergency help for confusion, fainting, seizures, or loss of consciousness.
+    </section>
+
+    <section class="workspace" id="planner">
+      <form id="shift-form" class="panel form-panel" novalidate>
+        <div class="section-heading"><div><p class="step">01 · Conditions</p><h2>Describe the shift</h2></div><button type="reset" class="text-button">Reset</button></div>
+        <div id="form-error" class="form-error" role="alert" hidden></div>
+        <div class="field-grid">
+          <label class="field wide">Shift name<input id="shift-name" name="shiftName" maxlength="60" placeholder="Roof repair — east block" required><span>Use a name the team will recognize.</span></label>
+          <label class="field">Start time<input id="start-time" name="startTime" type="time" required></label>
+          <label class="field">Length (hours)<input id="duration" name="duration" type="number" min="1" max="16" step="0.5" required></label>
+          <label class="field">Air temperature (°C)<input id="temperature" name="temperature" type="number" min="10" max="60" step="0.5" required></label>
+          <label class="field">Relative humidity (%)<input id="humidity" name="humidity" type="number" min="5" max="100" step="1" required></label>
+          <label class="field">Work intensity<select id="intensity" name="intensity"><option value="light">Light — standing, inspection</option><option value="moderate">Moderate — steady manual work</option><option value="heavy">Heavy — lifting, digging, climbing</option></select></label>
+          <label class="field">Sun exposure<select id="sun" name="sun"><option value="shade">Mostly shaded / indoors</option><option value="mixed">Mixed sun and shade</option><option value="direct">Mostly direct sun</option></select></label>
+          <label class="field">Clothing / PPE<select id="ppe" name="ppe"><option value="breathable">Breathable work clothing</option><option value="standard">Standard PPE / coveralls</option><option value="impermeable">Impermeable or heavy protective gear</option></select></label>
+          <label class="check wide"><input id="acclimatized" name="acclimatized" type="checkbox"><span><strong>Team is acclimatized</strong><small>Most workers have built up exposure over 1–2 weeks.</small></span></label>
+        </div>
+        <button class="button primary full" type="submit">Build shift plan</button>
+      </form>
+
+      <section class="panel result-panel" aria-live="polite" aria-busy="false">
+        <div id="empty-result" class="empty-state"><span class="empty-mark" aria-hidden="true">☀</span><h2>Your shift card will appear here</h2><p>Enter the conditions to get a practical briefing you can review with the team.</p></div>
+        <div id="result" hidden>
+          <div class="result-top"><div><p class="step">02 · Plan</p><h2 id="result-title"></h2></div><span id="tier-badge" class="tier-badge"></span></div>
+          <p id="result-summary" class="result-summary"></p>
+          <div class="metric-grid"><div><span>Estimated heat index</span><strong id="heat-index"></strong><small>Air temperature + humidity only</small></div><div><span>Check-in rhythm</span><strong id="check-in"></strong><small>Increase if conditions worsen</small></div><div><span>Plan review</span><strong id="review-time"></strong><small>Reassess conditions and team</small></div></div>
+          <div class="callout" id="callout"></div>
+          <h3>Briefing checklist</h3><div id="checklist" class="checklist"></div>
+          <h3>Suggested shift rhythm</h3><div id="timeline" class="timeline"></div>
+          <div class="result-actions"><button id="save-plan" class="button primary">Save plan</button><button id="print-plan" class="button secondary">Print</button></div>
+        </div>
+      </section>
+    </section>
+
+    <section class="saved-section" aria-labelledby="saved-title">
+      <div class="section-heading"><div><p class="step">03 · Reuse</p><h2 id="saved-title">Saved shift plans</h2></div><div><button id="export-data" class="text-button">Export data</button><button id="clear-data" class="text-button danger">Clear all</button></div></div>
+      <div id="saved-plans" class="saved-grid"></div>
+    </section>
+
+    <section class="evidence" aria-labelledby="evidence-title">
+      <p class="step">Why this exists</p><h2 id="evidence-title">Heat planning is becoming everyday work.</h2>
+      <p>WHO identifies heat stress as a leading cause of weather-related deaths. ILO research published in August 2026 found elevated occupational mortality risks and highlighted water, rest, adapted schedules, training, and acclimatization.</p>
+      <div class="source-links"><a href="https://www.who.int/news-room/fact-sheets/detail/climate-change-heat-and-health" target="_blank" rel="noreferrer">WHO: Heat and health ↗</a><a href="https://www.ilo.org/publications/climate-related-heat-stress-and-occupational-mortality-colombia" target="_blank" rel="noreferrer">ILO working paper 178 ↗</a></div>
+    </section>
+  </main>
+  <footer><span>HeatShift · 2026-W36</span><span>Private by design · Works offline after first load</span></footer>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

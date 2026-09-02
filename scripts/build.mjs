@@ -1,0 +1,1 @@
+import {cp,mkdir,rm} from 'node:fs/promises';const files=['index.html','styles.css','app.js','logic.js','manifest.webmanifest','sw.js'];await rm('dist',{recursive:true,force:true});await mkdir('dist');await Promise.all(files.map(f=>cp(f,`dist/${f}`)));console.log(`Built ${files.length} files in dist/`);
