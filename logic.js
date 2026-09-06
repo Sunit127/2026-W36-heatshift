@@ -37,4 +37,5 @@ export function buildPlan(input) {
   return {...input,shiftName:input.shiftName.trim(),temperature,humidity,duration,heatIndex:hi,tier,...config,checklist,timeline,createdAt:new Date().toISOString()};
 }
 
-export function safeParsePlans(raw) { try { const value=JSON.parse(raw); return Array.isArray(value)?value:[]; } catch { return []; } }
+function isSavedPlan(value) { return value && typeof value === 'object' && typeof value.shiftName === 'string' && value.shiftName.trim() && typeof value.startTime === 'string' && /^\d{2}:\d{2}$/.test(value.startTime) && Number.isFinite(value.duration) && Number.isFinite(value.heatIndex) && typeof value.label === 'string' && Array.isArray(value.checklist) && Array.isArray(value.timeline); }
+export function safeParsePlans(raw) { try { const value=JSON.parse(raw); return Array.isArray(value)?value.filter(isSavedPlan):[]; } catch { return []; } }
