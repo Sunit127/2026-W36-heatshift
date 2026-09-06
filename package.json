@@ -1,1 +1,18 @@
-{"name":"heatshift","version":"1.0.0","private":true,"type":"module","scripts":{"check":"node --check app.js && node --check logic.js && node --check sw.js","test":"node --test","build":"node scripts/build.mjs","smoke":"bash scripts/smoke.sh","verify":"npm run check && npm test && npm run build && npm run smoke"},"engines":{"node":">=20"}}
+{
+  "name": "heatshift",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check app.js && node --check logic.js && node --check sw.js",
+    "test": "node --test",
+    "build": "node scripts/build.mjs",
+    "smoke": "bash scripts/smoke.sh",
+    "verify": "npm run check && npm test && npm run build && npm run smoke",
+    "server": "uvicorn server.app:app --reload",
+    "server-test": "python3 -m pytest server/tests -q"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

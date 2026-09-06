@@ -69,3 +69,17 @@ An offline PWA fits because workers may have weak connectivity, shared devices, 
 ## Responsible production path
 
 Validate the planning model with occupational-hygiene experts in each intended jurisdiction; localize emergency language and units; add a user-controlled WBGT input without pretending to measure it; conduct field usability and accessibility testing; define a reviewed content-update process; and deploy the static build behind HTTPS with a strict Content Security Policy.
+
+## Optional team-sharing backend
+
+The default client remains offline-first. When a team explicitly opts in, the FastAPI service in `server/` stores a validated plan snapshot in SQLite and returns an opaque share token. It never changes the planning tier or presents medical/regulatory advice.
+
+```bash
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r server/requirements.txt
+cp .env.example .env
+uvicorn server.app:app --host 127.0.0.1 --port 8000
+python3 -m pytest server/tests -q
+```
+
+Set `window.HEATSHIFT_API_BASE` before loading the static client to enable the optional “Share with team” action. Without it, the app stays local. The API exposes `GET /healthz`, `POST /api/v1/plans`, and `GET /api/v1/plans/{share_token}`; requests are size-limited, validated, rate-limited, CORS-scoped, and returned with security headers. Share tokens are bearer capabilities, so deploy behind HTTPS and treat them as sensitive.
