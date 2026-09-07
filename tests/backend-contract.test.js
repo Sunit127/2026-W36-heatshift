@@ -5,5 +5,5 @@ const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
 test("optional sharing targets the validated API", () => {
   assert.match(app, /HEATSHIFT_API_BASE/);
   assert.match(app, /\/api\/v1\/plans/);
-  assert.match(app, /JSON\.stringify\(current\)/);
+  assert.match(app, /JSON\.stringify\((current|currentPlan)\)/);
 });

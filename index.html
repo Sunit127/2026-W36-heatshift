@@ -25,7 +25,7 @@
         <div class="hero-actions"><a class="button primary" href="#planner">Plan a shift</a><button class="button secondary" id="load-sample">Load sample</button></div>
         <p class="privacy-line">No account. No location tracking. Your plans stay in this browser.</p>
       </div>
-      <aside class="hero-card" aria-label="Today’s planning flow">
+      <aside class="hero-card" aria-label="Today’s planning flow" data-depth="1.05" data-tilt>
         <span class="card-kicker">Before work starts</span>
         <ol><li>Describe the conditions</li><li>Review the planning tier</li><li>Brief the team and save the card</li></ol>
       </aside>
@@ -36,7 +36,7 @@
     </section>
 
     <section class="workspace" id="planner">
-      <form id="shift-form" class="panel form-panel" novalidate>
+      <form id="shift-form" class="panel form-panel" novalidate data-depth="1.2" data-tilt>
         <div class="section-heading"><div><p class="step">01 · Conditions</p><h2>Describe the shift</h2></div><button type="reset" class="text-button">Reset</button></div>
         <div id="form-error" class="form-error" role="alert" hidden></div>
         <div class="field-grid">
@@ -53,7 +53,7 @@
         <button class="button primary full" type="submit">Build shift plan</button>
       </form>
 
-      <section class="panel result-panel" aria-live="polite" aria-busy="false">
+      <section class="panel result-panel" aria-live="polite" aria-busy="false" data-depth="0.85" data-tilt>
         <div id="empty-result" class="empty-state"><span class="empty-mark" aria-hidden="true">☀</span><h2>Your shift card will appear here</h2><p>Enter the conditions to get a practical briefing you can review with the team.</p></div>
         <div id="result" hidden>
           <div class="result-top"><div><p class="step">02 · Plan</p><h2 id="result-title"></h2></div><span id="tier-badge" class="tier-badge"></span></div>

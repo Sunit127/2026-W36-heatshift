@@ -1,0 +1,38 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='720' height='720' viewBox='0 0 720 720' fill='none'>
+  <defs>
+    <linearGradient id='sky' x1='0' y1='0' x2='1' y2='1'>
+      <stop offset='0%' stop-color='#f9f6e8' />
+      <stop offset='100%' stop-color='#f4f0e6' />
+    </linearGradient>
+    <radialGradient id='sun' cx='0.15' cy='0.05' r='0.32'>
+      <stop offset='0%' stop-color='#ffe9a3' stop-opacity='0.9' />
+      <stop offset='100%' stop-color='#f4f0e6' stop-opacity='0' />
+    </radialGradient>
+  </defs>
+  <rect width='720' height='720' fill='url(#sky)' />
+  <circle cx='96' cy='72' r='220' fill='url(#sun)' />
+  <g stroke='rgba(16,43,39,0.08)' stroke-width='1'>
+    <path d='M0 120h720' />
+    <path d='M0 180h720' />
+    <path d='M0 240h720' />
+    <path d='M0 300h720' />
+    <path d='M0 360h720' />
+    <path d='M0 420h720' />
+    <path d='M0 480h720' />
+    <path d='M0 540h720' />
+    <path d='M0 600h720' />
+    <path d='M0 660h720' />
+  </g>
+  <g fill='none' stroke='rgba(16,43,39,0.08)' stroke-width='1'>
+    <circle cx='120' cy='320' r='280' />
+    <circle cx='640' cy='600' r='220' />
+    <path d='M640 140c-120 120-320 40-370 170' />
+    <path d='M40 700c180-240 500-200 660-390' />
+  </g>
+  <g opacity='0.12'>
+    <circle cx='590' cy='140' r='14' fill='#102b27' />
+    <circle cx='650' cy='230' r='10' fill='#ef7f43' />
+    <circle cx='540' cy='300' r='8' fill='#d8ef84' />
+    <circle cx='600' cy='370' r='6' fill='#f3a64a' />
+  </g>
+</svg>

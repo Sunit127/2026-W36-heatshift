@@ -8,7 +8,12 @@
   --orange:#f3a64a;
   --red:#c84a3c;
   --line:#d9ded8;
+  --grain:#f5f3ee;
   --shadow:0 18px 50px rgba(16,43,39,.09);
+  --panel-shadow:0 28px 70px rgba(16,43,39,.16);
+  --scene-depth:1300px;
+  --scene-float:14px;
+  --float-distance:18px;
   font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   color:var(--ink);
   background:var(--cream);
@@ -25,9 +30,42 @@ html
 body
 {
   margin:0;
+  position:relative;
   min-width:320px;
   background:linear-gradient(180deg,#eef3da 0,#f4f0e6 31rem);
-  line-height:1.5
+  line-height:1.5;
+  perspective:var(--scene-depth);
+  perspective-origin:center top;
+  transform-style:preserve-3d;
+  overflow-x:hidden
+}
+body::before
+{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-3;
+  background:
+    radial-gradient(circle at 86% 18%, rgba(255,255,255,.6), transparent 40%),
+    url("assets/heatshift-bg.svg") center -180px/1900px auto no-repeat;
+  opacity:.62;
+  pointer-events:none;
+  transform:translateZ(-70px);
+  animation:heatshift-clouds 46s linear infinite;
+}
+body::after
+{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-2;
+  background:linear-gradient(140deg,rgba(255,255,255,.4),rgba(212,240,132,.18) 48%,rgba(16,43,39,.04) 100%);
+  pointer-events:none
+}
+main
+{
+  position:relative;
+  z-index:1
 }
 button,input,select
 {
@@ -145,8 +183,10 @@ main
   color:white;
   border-radius:4px;
   padding:32px;
-  box-shadow:var(--shadow);
-  transform:rotate(1deg)
+  box-shadow:var(--panel-shadow);
+  --tilt-base-transform:rotate(1deg);
+  animation:heatshift-orbit 7s ease-in-out infinite alternate;
+  transform-style:preserve-3d
 }
 .hero-card .card-kicker
 {
@@ -172,6 +212,56 @@ main
   content:"0" counter(flow);
   color:var(--lime);
   font-weight:800
+}
+[data-tilt]
+{
+  --tilt-base-transform:rotate(0deg);
+  --tilt-rotate-x:0deg;
+  --tilt-rotate-y:0deg;
+  --tilt-translate-z:0px;
+  --tilt-scale:1;
+  transform:
+    var(--tilt-base-transform)
+    rotateX(var(--tilt-rotate-x))
+    rotateY(var(--tilt-rotate-y))
+    translateZ(var(--tilt-translate-z))
+    scale(var(--tilt-scale));
+  transform-style:preserve-3d;
+  transition:
+    transform .18s ease,
+    box-shadow .22s ease;
+  will-change:transform;
+  backface-visibility:hidden
+}
+.panel,[data-tilt]:not(.hero-card):not(.result-panel)
+{
+  transform:var(--tilt-base-transform) rotateX(var(--tilt-rotate-x)) rotateY(var(--tilt-rotate-y)) translateZ(var(--tilt-translate-z)) scale(var(--tilt-scale))
+}
+.result-panel
+{
+  --tilt-base-transform:translateZ(6px);
+  position:sticky;
+  top:18px;
+  min-height:560px;
+  animation:heatshift-lift 8.6s ease-in-out infinite
+}
+.saved-card,
+.result-panel,
+.hero-card
+{
+  transition:
+    transform .22s cubic-bezier(.19,.96,.36,1),
+    box-shadow .25s
+}
+.saved-card:hover,
+.hero-card:hover,
+.result-panel:hover
+{
+  box-shadow:0 28px 70px rgba(16,43,39,.22)
+}
+.saved-card
+{
+  --tilt-base-transform:rotate(0.2deg)
 }
 .button
 {
@@ -536,6 +626,19 @@ main
   color:var(--muted);
   text-align:center
 }
+.scene-glow
+{
+  pointer-events:none;
+  position:fixed;
+  z-index:-1;
+  inset:0;
+  background:
+    radial-gradient(900px 200px at 75% 4%,rgba(216,239,132,.18),transparent),
+    radial-gradient(1000px 190px at 20% 92%,rgba(243,166,74,.1),transparent);
+  opacity:.6;
+  mix-blend-mode:soft-light;
+  animation:pulse-field 11s ease-in-out infinite alternate
+}
 .evidence
 {
   background:var(--ink);
@@ -577,6 +680,66 @@ footer
   border-top:1px solid rgba(16,43,39,.18);
   font-size:.78rem;
   color:var(--muted)
+}
+@keyframes heatshift-clouds
+{
+  0%
+  {
+    transform:translateZ(-70px) scale(1)
+  }
+  50%
+  {
+    transform:translateZ(-72px) scale(1.03) translateX(-12px)
+  }
+  100%
+  {
+    transform:translateZ(-70px) scale(1) translateX(0)
+  }
+}
+@keyframes heatshift-orbit
+{
+  0%
+  {
+    transform:translateY(0) rotateX(0deg)
+  }
+  50%
+  {
+    transform:translateY(calc(var(--float-distance) * -0.45))
+  }
+  100%
+  {
+    transform:translateY(calc(var(--float-distance) * -0.16))
+  }
+}
+@keyframes heatshift-lift
+{
+  0%
+  {
+    transform:var(--tilt-base-transform) translateY(0px)
+  }
+  50%
+  {
+    transform:var(--tilt-base-transform) translateY(calc(var(--float-distance) * -0.5))
+  }
+  100%
+  {
+    transform:var(--tilt-base-transform) translateY(calc(var(--float-distance) * -0.2))
+  }
+}
+@keyframes pulse-field
+{
+  0%
+  {
+    opacity:.32
+  }
+  50%
+  {
+    opacity:.52
+  }
+  100%
+  {
+    opacity:.4
+  }
 }
 @media(max-width:850px)
 {
@@ -665,6 +828,28 @@ footer
   {
     flex-direction:column;
     gap:6px
+  }
+}
+@media(prefers-reduced-motion:reduce)
+{
+  *:where(::before,::after,::selection)
+  {
+    transition:none!important;
+    animation:none!important;
+  }
+  [data-tilt]
+  {
+    transition:none!important;
+    transform:var(--tilt-base-transform)!important;
+  }
+  body
+  {
+    animation:none;
+    perspective:none
+  }
+  .hero-card,.result-panel,.saved-card
+  {
+    animation:none
   }
 }
 @media print
