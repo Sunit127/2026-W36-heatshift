@@ -44,7 +44,7 @@ body::before
   content:"";
   position:fixed;
   inset:0;
-  z-index:-3;
+  z-index:0;
   background:
     radial-gradient(circle at 86% 18%, rgba(255,255,255,.6), transparent 40%),
     url("assets/heatshift-bg.svg") center -180px/1900px auto no-repeat;
@@ -58,7 +58,7 @@ body::after
   content:"";
   position:fixed;
   inset:0;
-  z-index:-2;
+  z-index:1;
   background:linear-gradient(140deg,rgba(255,255,255,.4),rgba(212,240,132,.18) 48%,rgba(16,43,39,.04) 100%);
   pointer-events:none
 }
