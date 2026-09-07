@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-import json, os, re, secrets, sqlite3, time
+import json
+import os
+import re
+import secrets
+import sqlite3
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -56,18 +61,36 @@ def db():
 
 def migrate():
     with db() as c:
-        c.execute("CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)")
-        if c.execute("SELECT 1 FROM schema_migrations WHERE version=1").fetchone() is None:
-            c.execute("CREATE TABLE plans (share_token TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT)")
+        c.execute(
+            "CREATE TABLE IF NOT EXISTS schema_migrations "
+            "(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)"
+        )
+        if (
+            c.execute("SELECT 1 FROM schema_migrations WHERE version=1").fetchone()
+            is None
+        ):
             c.execute(
-                "INSERT INTO schema_migrations(version,applied_at) VALUES(1,?)",
+                "CREATE TABLE plans ("
+                "share_token TEXT PRIMARY KEY, "
+                "payload TEXT NOT NULL, "
+                "created_at TEXT NOT NULL, "
+                "expires_at TEXT"
+                ")"
+            )
+            c.execute(
+                "INSERT INTO schema_migrations(version,applied_at) VALUES(1, ?)",
                 (datetime.now(timezone.utc).isoformat(),),
             )
 
 
 def create_app():
     migrate()
-    app = FastAPI(title="HeatShift team-sharing API", version="1.0.0", docs_url=None, redoc_url=None)
+    app = FastAPI(
+        title="HeatShift team-sharing API",
+        version="1.0.0",
+        docs_url=None,
+        redoc_url=None,
+    )
 
     raw_origins = os.getenv("HEATSHIFT_CORS_ORIGINS", "http://localhost:8080")
     origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
@@ -82,16 +105,30 @@ def create_app():
     @app.middleware("http")
     async def hardening(request: Request, call_next):
         content_length = request.headers.get("content-length")
-        if content_length and (not content_length.isdigit() or int(content_length) > 65536):
+        if (
+            content_length
+            and (
+                not content_length.isdigit()
+                or int(content_length) > 65536
+            )
+        ):
             # Reject oversized payloads before application parsing.
             return JSONResponse({"detail": "Request body too large"}, status_code=413)
 
         now = time.monotonic()
         client_key = request.client.host if request.client else "unknown"
-        recent_calls = [event for event in hits.get(client_key, []) if now - event < WINDOW_SECONDS]
+        recent_calls = [
+            event
+            for event in hits.get(client_key, [])
+            if now - event < WINDOW_SECONDS
+        ]
         if len(recent_calls) >= RATE_LIMIT:
             # Per-client in-memory rate limiting to reduce burst abuse.
-            return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429, headers={"Retry-After": "60"})
+            return JSONResponse(
+                {"detail": "Rate limit exceeded"},
+                status_code=429,
+                headers={"Retry-After": "60"},
+            )
 
         recent_calls.append(now)
         hits[client_key] = recent_calls
@@ -121,7 +158,8 @@ def create_app():
         payload = plan.model_dump_json(exclude_none=True)
         with db() as c:
             c.execute(
-                "INSERT INTO plans(share_token,payload,created_at) VALUES(?,?,?)",
+                "INSERT INTO plans(share_token,payload,created_at) "
+                "VALUES(?,?,?)",
                 (token, payload, created_at),
             )
         return {
