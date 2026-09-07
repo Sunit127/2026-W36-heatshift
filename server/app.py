@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 DB_PATH=Path(os.getenv("HEATSHIFT_DB_PATH","server/heatshift.sqlite3")); DB_PATH.parent.mkdir(parents=True,exist_ok=True)
 RATE_LIMIT=max(1,int(os.getenv("HEATSHIFT_RATE_LIMIT","60"))); WINDOW_SECONDS=60; TOKEN_RE=re.compile(r"^[A-Za-z0-9_-]{20,64}$"); hits={}
 class Plan(BaseModel):
-    model_config=ConfigDict(extra="ignore")
+    model_config=ConfigDict(extra="forbid")
     shiftName:str=Field(min_length=1,max_length=60); startTime:str=Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
     duration:float=Field(ge=1,le=16); temperature:float=Field(ge=10,le=60); humidity:float=Field(ge=5,le=100)
     intensity:Literal["light","moderate","heavy"]; sun:Literal["shade","mixed","direct"]; ppe:Literal["breathable","standard","impermeable"]

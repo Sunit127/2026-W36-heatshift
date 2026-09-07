@@ -11,3 +11,8 @@ def test_create_and_fetch():
     r=client.post("/api/v1/plans",json=BASE); assert r.status_code==201; token=r.json()["shareToken"]; got=client.get(f"/api/v1/plans/{token}"); assert got.status_code==200; assert got.json()["plan"]["shiftName"]=="Roof crew"; assert "medical" not in got.text.lower()
 def test_validation_fails_closed():
     assert client.post("/api/v1/plans",json={**BASE,"temperature":99}).status_code==422; assert client.get("/api/v1/plans/not-a-token").status_code==404
+
+def test_unknown_fields_are_rejected():
+    response=client.post("/api/v1/plans",json={**BASE,"unexpected":"value"})
+    assert response.status_code==422
+    assert "extra" in response.text.lower()
