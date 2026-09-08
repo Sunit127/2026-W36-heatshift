@@ -6,7 +6,7 @@ import re
 import secrets
 import sqlite3
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -22,6 +22,18 @@ RATE_LIMIT = max(1, int(os.getenv("HEATSHIFT_RATE_LIMIT", "60")))
 WINDOW_SECONDS = 60
 TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{20,64}$")
 hits: dict[str, list[float]] = {}
+
+
+def configured_share_ttl() -> int:
+    """Keep opt-in share retention bounded even when deployment config is malformed."""
+    try:
+        value = int(os.getenv("HEATSHIFT_SHARE_TTL_SECONDS", str(30 * 24 * 60 * 60)))
+    except ValueError:
+        value = 30 * 24 * 60 * 60
+    return max(300, min(value, 365 * 24 * 60 * 60))
+
+
+SHARE_TTL_SECONDS = configured_share_ttl()
 
 
 class Plan(BaseModel):
@@ -59,6 +71,24 @@ def db():
     return connection
 
 
+def expiry_for(created_at: str) -> str:
+    """Return an ISO-8601 expiry for a stored share, tolerating legacy timestamps."""
+    try:
+        created = datetime.fromisoformat(created_at)
+    except ValueError:
+        created = datetime.now(timezone.utc)
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    return (created + timedelta(seconds=SHARE_TTL_SECONDS)).isoformat()
+
+
+def purge_expired(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        "DELETE FROM plans WHERE expires_at IS NOT NULL AND expires_at <= ?",
+        (datetime.now(timezone.utc).isoformat(),),
+    )
+
+
 def migrate():
     with db() as c:
         c.execute(
@@ -81,6 +111,23 @@ def migrate():
                 "INSERT INTO schema_migrations(version,applied_at) VALUES(1, ?)",
                 (datetime.now(timezone.utc).isoformat(),),
             )
+
+        columns = {
+            row["name"]
+            for row in c.execute("PRAGMA table_info(plans)").fetchall()
+        }
+        if "expires_at" not in columns:
+            c.execute("ALTER TABLE plans ADD COLUMN expires_at TEXT")
+
+        legacy_rows = c.execute(
+            "SELECT share_token,created_at FROM plans WHERE expires_at IS NULL"
+        ).fetchall()
+        for row in legacy_rows:
+            c.execute(
+                "UPDATE plans SET expires_at=? WHERE share_token=?",
+                (expiry_for(row["created_at"]), row["share_token"]),
+            )
+        purge_expired(c)
 
 
 def create_app():
@@ -155,16 +202,19 @@ def create_app():
         # Explicitly store normalized payload to keep DB rows consistent.
         token = secrets.token_urlsafe(24)
         created_at = datetime.now(timezone.utc).isoformat()
+        expires_at = expiry_for(created_at)
         payload = plan.model_dump_json(exclude_none=True)
         with db() as c:
+            purge_expired(c)
             c.execute(
-                "INSERT INTO plans(share_token,payload,created_at) "
-                "VALUES(?,?,?)",
-                (token, payload, created_at),
+                "INSERT INTO plans(share_token,payload,created_at,expires_at) "
+                "VALUES(?,?,?,?)",
+                (token, payload, created_at, expires_at),
             )
         return {
             "shareToken": token,
             "createdAt": created_at,
+            "expiresAt": expires_at,
             "plan": plan.model_dump(exclude_none=True),
         }
 
@@ -175,9 +225,11 @@ def create_app():
             raise HTTPException(404, "Plan not found")
 
         with db() as c:
+            purge_expired(c)
             row = c.execute(
-                "SELECT payload,created_at FROM plans WHERE share_token=?",
-                (share_token,),
+                "SELECT payload,created_at,expires_at "
+                "FROM plans WHERE share_token=? AND expires_at > ?",
+                (share_token, datetime.now(timezone.utc).isoformat()),
             ).fetchone()
 
         if row is None:
@@ -186,6 +238,7 @@ def create_app():
         return {
             "shareToken": share_token,
             "createdAt": row["created_at"],
+            "expiresAt": row["expires_at"],
             "plan": json.loads(row["payload"]),
         }
 

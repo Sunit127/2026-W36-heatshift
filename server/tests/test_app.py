@@ -1,10 +1,11 @@
 import os
+import sqlite3
 
 os.environ["HEATSHIFT_DB_PATH"] = "/tmp/heatshift-test.sqlite3"
 os.environ["HEATSHIFT_CORS_ORIGINS"] = "http://localhost:8080"
 
 from fastapi.testclient import TestClient
-from server.app import app
+from server.app import DB_PATH, app
 
 client = TestClient(app)
 
@@ -35,6 +36,7 @@ def test_create_and_fetch():
     assert response.status_code == 201
 
     token = response.json()["shareToken"]
+    assert response.json()["expiresAt"] > response.json()["createdAt"]
     fetched = client.get(f"/api/v1/plans/{token}")
 
     assert fetched.status_code == 200
@@ -55,3 +57,18 @@ def test_unknown_fields_are_rejected():
     response = client.post("/api/v1/plans", json={**BASE_PLAN, "unexpected": "value"})
     assert response.status_code == 422
     assert "extra" in response.text.lower()
+
+
+def test_expired_share_is_not_retrievable():
+    token = "expired-share-token-123456"
+    payload = '{"shiftName":"Expired"}'
+    with sqlite3.connect(DB_PATH) as connection:
+        connection.execute("DELETE FROM plans WHERE share_token=?", (token,))
+        connection.execute(
+            "INSERT INTO plans(share_token,payload,created_at,expires_at) VALUES(?,?,?,?)",
+            (token, payload, "2020-01-01T00:00:00+00:00", "2020-01-02T00:00:00+00:00"),
+        )
+
+    response = client.get(f"/api/v1/plans/{token}")
+
+    assert response.status_code == 404
