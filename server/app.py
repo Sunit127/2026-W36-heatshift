@@ -18,7 +18,16 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 DB_PATH = Path(os.getenv("HEATSHIFT_DB_PATH", "server/heatshift.sqlite3"))
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-RATE_LIMIT = max(1, int(os.getenv("HEATSHIFT_RATE_LIMIT", "60")))
+def configured_rate_limit() -> int:
+    """Parse a bounded request quota without crashing or disabling protection."""
+    try:
+        value = int(os.getenv("HEATSHIFT_RATE_LIMIT", "60"))
+    except (TypeError, ValueError):
+        value = 60
+    return max(1, min(value, 1_000))
+
+
+RATE_LIMIT = configured_rate_limit()
 WINDOW_SECONDS = 60
 TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{20,64}$")
 hits: dict[str, list[float]] = {}
@@ -162,23 +171,27 @@ def create_app():
             # Reject oversized payloads before application parsing.
             return JSONResponse({"detail": "Request body too large"}, status_code=413)
 
-        now = time.monotonic()
-        client_key = request.client.host if request.client else "unknown"
-        recent_calls = [
-            event
-            for event in hits.get(client_key, [])
-            if now - event < WINDOW_SECONDS
-        ]
-        if len(recent_calls) >= RATE_LIMIT:
-            # Per-client in-memory rate limiting to reduce burst abuse.
-            return JSONResponse(
-                {"detail": "Rate limit exceeded"},
-                status_code=429,
-                headers={"Retry-After": "60"},
-            )
+        # CORS preflights and liveness probes should not consume the write quota.
+        should_limit = request.method != "OPTIONS" and request.url.path != "/healthz"
+        if should_limit:
+            now = time.monotonic()
+            client_key = request.client.host if request.client else "unknown"
+            recent_calls = [
+                event
+                for event in hits.get(client_key, [])
+                if now - event < WINDOW_SECONDS
+            ]
+            if len(recent_calls) >= RATE_LIMIT:
+                # Per-client in-memory rate limiting to reduce burst abuse.
+                return JSONResponse(
+                    {"detail": "Rate limit exceeded"},
+                    status_code=429,
+                    headers={"Retry-After": "60"},
+                )
 
-        recent_calls.append(now)
-        hits[client_key] = recent_calls
+            recent_calls.append(now)
+            hits[client_key] = recent_calls
+
         response = await call_next(request)
         response.headers.update(
             {
