@@ -5,7 +5,7 @@ os.environ["HEATSHIFT_DB_PATH"] = "/tmp/heatshift-test.sqlite3"
 os.environ["HEATSHIFT_CORS_ORIGINS"] = "http://localhost:8080"
 
 from fastapi.testclient import TestClient
-from server.app import DB_PATH, app
+from server.app import DB_PATH, app, hits
 
 client = TestClient(app)
 
@@ -72,3 +72,20 @@ def test_expired_share_is_not_retrievable():
     response = client.get(f"/api/v1/plans/{token}")
 
     assert response.status_code == 404
+
+
+def test_health_and_preflight_do_not_consume_rate_limit(monkeypatch):
+    """Operational probes stay available when the API quota is exhausted."""
+    monkeypatch.setattr("server.app.RATE_LIMIT", 1)
+    hits.clear()
+
+    preflight = client.options(
+        "/api/v1/plans",
+        headers={
+            "Origin": "http://localhost:8080",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert preflight.status_code == 200
+    assert client.get("/healthz").status_code == 200
+    assert client.get("/healthz").status_code == 200
