@@ -85,14 +85,24 @@ function renderPlan(plan) {
 }
 
 function loadPlans() {
-  const saved = localStorage.getItem(STORAGE_KEY) || '[]';
-  return safeParsePlans(saved);
+  try {
+    return safeParsePlans(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch {
+    $('#save-status').textContent = 'Saved data unavailable';
+    return [];
+  }
 }
 
 function persistPlans(items) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  $('#save-status').textContent = 'Saved on this device';
-  renderSavedPlans();
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    $('#save-status').textContent = 'Saved on this device';
+    renderSavedPlans();
+    return true;
+  } catch {
+    $('#save-status').textContent = 'Could not save: browser storage is unavailable';
+    return false;
+  }
 }
 
 function initTiltForElement(element) {

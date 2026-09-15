@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -153,7 +153,7 @@ def create_app():
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "DELETE"],
         allow_headers=["Content-Type"],
         max_age=600,
     )
@@ -230,6 +230,17 @@ def create_app():
             "expiresAt": expires_at,
             "plan": plan.model_dump(exclude_none=True),
         }
+
+    @app.delete("/api/v1/plans/{share_token}", status_code=204)
+    def delete_plan(share_token: str):
+        # Share tokens are bearer capabilities; deletion supports explicit data minimization.
+        if not TOKEN_RE.fullmatch(share_token):
+            raise HTTPException(404, "Plan not found")
+        with db() as c:
+            result = c.execute("DELETE FROM plans WHERE share_token=?", (share_token,))
+            if result.rowcount != 1:
+                raise HTTPException(404, "Plan not found")
+        return Response(status_code=204)
 
     @app.get("/api/v1/plans/{share_token}")
     def get_plan(share_token: str):

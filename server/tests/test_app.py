@@ -42,9 +42,17 @@ def test_create_and_fetch():
     assert fetched.status_code == 200
     assert fetched.json()["plan"]["shiftName"] == "Roof crew"
 
+    deleted = client.delete(f"/api/v1/plans/{token}")
+    assert deleted.status_code == 204
+    assert client.get(f"/api/v1/plans/{token}").status_code == 404
+
     # Avoid accidental medical/regulatory claims in response data.
     assert "medical" not in fetched.text.lower()
 
+
+def test_content_type_and_validation_fail_closed():
+    unsupported = client.post("/api/v1/plans", data="{}")
+    assert unsupported.status_code == 422
 
 def test_validation_fails_closed():
     response = client.post("/api/v1/plans", json={**BASE_PLAN, "temperature": 99})

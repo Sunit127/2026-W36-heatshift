@@ -82,4 +82,4 @@ uvicorn server.app:app --host 127.0.0.1 --port 8000
 python3 -m pytest server/tests -q
 ```
 
-Set `window.HEATSHIFT_API_BASE` before loading the static client to enable the optional “Share with team” action. Without it, the app stays local. The API exposes `GET /healthz`, `POST /api/v1/plans`, and `GET /api/v1/plans/{share_token}`; requests are size-limited, validated, rate-limited, CORS-scoped, and returned with security headers. Share tokens are bearer capabilities, so deploy behind HTTPS and treat them as sensitive.
+Set `window.HEATSHIFT_API_BASE` before loading the static client to enable the optional “Share with team” action. Without it, the app stays local. The API exposes `GET /healthz`, `POST /api/v1/plans`, `GET /api/v1/plans/{share_token}`, and `DELETE /api/v1/plans/{share_token}`; requests are size-limited, validated, rate-limited, CORS-scoped, and returned with security headers. Deleting with the bearer share token supports explicit retention control. Share tokens are bearer capabilities, so deploy behind HTTPS and treat them as sensitive.
