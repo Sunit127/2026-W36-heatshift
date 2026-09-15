@@ -52,7 +52,7 @@ def test_create_and_fetch():
 
 def test_content_type_and_validation_fail_closed():
     unsupported = client.post("/api/v1/plans", data="{}")
-    assert unsupported.status_code == 422
+    assert unsupported.status_code == 415
 
 def test_validation_fails_closed():
     response = client.post("/api/v1/plans", json={**BASE_PLAN, "temperature": 99})

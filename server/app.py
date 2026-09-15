@@ -171,6 +171,14 @@ def create_app():
             # Reject oversized payloads before application parsing.
             return JSONResponse({"detail": "Request body too large"}, status_code=413)
 
+        if request.method == "POST" and request.url.path == "/api/v1/plans":
+            content_type = request.headers.get("content-type", "").lower()
+            if not content_type.startswith("application/json"):
+                return JSONResponse(
+                    {"detail": "Content-Type must be application/json"},
+                    status_code=415,
+                )
+
         # CORS preflights and liveness probes should not consume the write quota.
         should_limit = request.method != "OPTIONS" and request.url.path != "/healthz"
         if should_limit:
