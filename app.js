@@ -215,10 +215,34 @@ async function sharePlan() {
 
   try {
     const endpoint = `${API_BASE.replace(/\/$/, '')}/api/v1/plans`;
+    // Send only the backend's validated input contract. Derived display fields
+    // (checklist, timeline, summary) stay local and are never trusted or stored.
+    const {
+      shiftName,
+      startTime,
+      duration,
+      temperature,
+      humidity,
+      intensity,
+      sun,
+      ppe,
+      acclimatized,
+    } = currentPlan;
+    const sharePayload = {
+      shiftName,
+      startTime,
+      duration,
+      temperature,
+      humidity,
+      intensity,
+      sun,
+      ppe,
+      acclimatized,
+    };
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(currentPlan),
+      body: JSON.stringify(sharePayload),
     });
 
     if (!response.ok) {
