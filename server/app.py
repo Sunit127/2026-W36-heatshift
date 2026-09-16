@@ -203,6 +203,7 @@ def create_app():
         response = await call_next(request)
         response.headers.update(
             {
+                "Cache-Control": "no-store",
                 "X-Content-Type-Options": "nosniff",
                 "X-Frame-Options": "DENY",
                 "Referrer-Policy": "no-referrer",

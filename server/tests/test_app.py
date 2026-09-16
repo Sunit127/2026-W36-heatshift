@@ -29,6 +29,7 @@ def test_health_and_headers():
 
     # API responses should carry hardening headers.
     assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["cache-control"] == "no-store"
 
 
 def test_create_and_fetch():
