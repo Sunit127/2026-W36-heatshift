@@ -9,12 +9,26 @@ export function heatIndexC(tempC, humidity) {
 }
 
 export function buildPlan(input) {
-  const temperature = Number(input.temperature), humidity = Number(input.humidity), duration = Number(input.duration);
-  if (!input.shiftName?.trim()) throw new Error('Add a shift name.');
-  if (!input.startTime) throw new Error('Choose a start time.');
+  if (!input || typeof input !== 'object') {
+    throw new Error('Enter the shift conditions.');
+  }
+
+  const shiftName = typeof input.shiftName === 'string' ? input.shiftName.trim() : '';
+  const startTime = typeof input.startTime === 'string' ? input.startTime : '';
+  const temperature = Number(input.temperature);
+  const humidity = Number(input.humidity);
+  const duration = Number(input.duration);
+
+  if (!shiftName) throw new Error('Add a shift name.');
+  if (shiftName.length > 60) throw new Error('Shift name must be 60 characters or fewer.');
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime)) throw new Error('Choose a valid start time.');
   if (!(temperature >= 10 && temperature <= 60)) throw new Error('Temperature must be between 10°C and 60°C.');
   if (!(humidity >= 5 && humidity <= 100)) throw new Error('Humidity must be between 5% and 100%.');
   if (!(duration >= 1 && duration <= 16)) throw new Error('Shift length must be between 1 and 16 hours.');
+  if (!['light', 'moderate', 'heavy'].includes(input.intensity)) throw new Error('Choose a valid work intensity.');
+  if (!['shade', 'mixed', 'direct'].includes(input.sun)) throw new Error('Choose a valid sun exposure.');
+  if (!['breathable', 'standard', 'impermeable'].includes(input.ppe)) throw new Error('Choose valid clothing or PPE.');
+  if (typeof input.acclimatized !== 'boolean') throw new Error('Choose whether the team is acclimatized.');
   const hi = heatIndexC(temperature, humidity);
   let points = hi >= 41 ? 7 : hi >= 36 ? 5 : hi >= 31 ? 3 : hi >= 27 ? 1 : 0;
   points += {light:0, moderate:1, heavy:2}[input.intensity] ?? 0;
@@ -32,15 +46,15 @@ export function buildPlan(input) {
   if (!input.acclimatized) checklist.unshift('Give new or returning workers a gradual exposure plan');
   if (input.sun !== 'shade') checklist.push('Add shade and sun protection where practical');
   if (input.ppe === 'impermeable') checklist.push('Have a qualified person review PPE heat burden and recovery frequency');
-  const timeline=[]; const [h,m]=input.startTime.split(':').map(Number); const start=h*60+m; const every=config.check;
+  const timeline=[]; const [h,m]=startTime.split(':').map(Number); const start=h*60+m; const every=config.check;
   for(let minute=0;minute<=duration*60;minute+=every){const total=(start+minute)%1440;timeline.push({time:`${String(Math.floor(total/60)).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`,label:minute===0?'Brief':minute%(config.review)===0?'Review plan':'Buddy check'});}
-  return {...input,shiftName:input.shiftName.trim(),temperature,humidity,duration,heatIndex:hi,tier,...config,checklist,timeline,createdAt:new Date().toISOString()};
+  return {...input,shiftName,startTime,temperature,humidity,duration,heatIndex:hi,tier,...config,checklist,timeline,createdAt:new Date().toISOString()};
 }
 
 function isSavedPlan(value) {
   if (!value || typeof value !== 'object') return false;
   const text = (key, max) => typeof value[key] === 'string' && value[key].trim().length > 0 && value[key].length <= max;
-  if (!text('shiftName', 60) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(value.startTime)) return false;
+  if (!text('shiftName', 60) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value.startTime)) return false;
   if (!Number.isFinite(value.duration) || value.duration < 1 || value.duration > 16) return false;
   if (!Number.isFinite(value.temperature) || value.temperature < 10 || value.temperature > 60) return false;
   if (!Number.isFinite(value.humidity) || value.humidity < 5 || value.humidity > 100) return false;
@@ -56,7 +70,7 @@ function isSavedPlan(value) {
     || !value.checklist.every((item) => typeof item === 'string' && item.length <= 240)) return false;
   if (!Array.isArray(value.timeline) || value.timeline.length > 80
     || !value.timeline.every((item) => item && typeof item === 'object'
-      && typeof item.time === 'string' && /^([01]\\d|2[0-3]):[0-5]\\d$/.test(item.time)
+      && typeof item.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time)
       && typeof item.label === 'string' && item.label.length <= 160)) return false;
   if (value.createdAt !== undefined && (typeof value.createdAt !== 'string' || !Number.isFinite(Date.parse(value.createdAt)))) return false;
   return value.id === undefined || (typeof value.id === 'string' && value.id.length <= 100);

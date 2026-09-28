@@ -17,3 +17,13 @@ test('saved-plan validation rejects malformed nested data and caps history', () 
   assert.deepEqual(safeParsePlans(JSON.stringify([{...valid, timeline:[{time:'bad', label:'x'}]}])), []);
   assert.equal(safeParsePlans(JSON.stringify(Array.from({length:40}, () => valid))).length, 25);
 });
+
+test('planner rejects values outside the UI and backend contract', () => {
+  const valid = {shiftName:'Crew', startTime:'12:00', duration:4, temperature:34, humidity:68, intensity:'moderate', sun:'direct', ppe:'standard', acclimatized:false};
+  assert.throws(() => buildPlan({...valid, shiftName:'x'.repeat(61)}), /60 characters/);
+  assert.throws(() => buildPlan({...valid, startTime:'25:99'}), /valid start time/);
+  assert.throws(() => buildPlan({...valid, intensity:'extreme'}), /work intensity/);
+  assert.throws(() => buildPlan({...valid, sun:'unknown'}), /sun exposure/);
+  assert.throws(() => buildPlan({...valid, ppe:'unknown'}), /clothing or PPE/);
+  assert.throws(() => buildPlan({...valid, acclimatized:'false'}), /acclimatized/);
+});
