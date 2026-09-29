@@ -38,6 +38,23 @@ npm run smoke   # Serves dist/ and checks the primary route and logic asset
 
 No configuration or credentials are required. `.env.example` documents the optional smoke-test port.
 
+## Continuous verification
+
+The checked-in [GitHub Actions workflow](.github/workflows/verify.yml) runs on every push to `main` and every pull request. It executes the exact frontend commands below, the FastAPI test suite, a live health/create/fetch API smoke test, a high-severity npm audit, and a tracked-file secret scan.
+
+```bash
+npm ci
+npm run check
+npm test
+npm run build
+npm run smoke
+python -m pip install --requirement server/requirements.txt
+PYTHONPATH=. python -m pytest server/tests -q
+npm audit --audit-level=high
+```
+
+The live API check starts Uvicorn on `127.0.0.1:8000`, waits for `/healthz`, creates a validated plan, and fetches it by its returned bearer token. The CI job is a guardrail, not a security guarantee; review deployment headers, CORS, rate-limit persistence, and SQLite access controls before production use.
+
 ## Validation, errors, and accessibility
 
 Inputs have explicit bounds and helpful errors. Results are announced through a live region, forms and controls have labels, keyboard focus is visible, colors are not the sole tier indicator, and layouts adapt down to small screens. Saved-data parsing fails closed to an empty list.
