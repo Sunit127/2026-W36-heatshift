@@ -36,9 +36,9 @@
     </section>
 
     <section class="workspace" id="planner">
-      <form id="shift-form" class="panel form-panel" novalidate data-depth="1.2" data-tilt>
+      <form id="shift-form" class="panel form-panel" novalidate aria-describedby="form-error" data-depth="1.2" data-tilt>
         <div class="section-heading"><div><p class="step">01 · Conditions</p><h2>Describe the shift</h2></div><button type="reset" class="text-button">Reset</button></div>
-        <div id="form-error" class="form-error" role="alert" hidden></div>
+        <div id="form-error" class="form-error" role="alert" tabindex="-1" hidden></div>
         <div class="field-grid">
           <label class="field wide">Shift name<input id="shift-name" name="shiftName" maxlength="60" placeholder="Roof repair — east block" required><span>Use a name the team will recognize.</span></label>
           <label class="field">Start time<input id="start-time" name="startTime" type="time" required></label>
@@ -56,7 +56,7 @@
       <section class="panel result-panel" aria-live="polite" aria-busy="false" data-depth="0.85" data-tilt>
         <div id="empty-result" class="empty-state"><span class="empty-mark" aria-hidden="true">☀</span><h2>Your shift card will appear here</h2><p>Enter the conditions to get a practical briefing you can review with the team.</p></div>
         <div id="result" hidden>
-          <div class="result-top"><div><p class="step">02 · Plan</p><h2 id="result-title"></h2></div><span id="tier-badge" class="tier-badge"></span></div>
+          <div class="result-top"><div><p class="step">02 · Plan</p><h2 id="result-title" tabindex="-1"></h2></div><span id="tier-badge" class="tier-badge"></span></div>
           <p id="result-summary" class="result-summary"></p>
           <div class="metric-grid"><div><span>Estimated heat index</span><strong id="heat-index"></strong><small>Air temperature + humidity only</small></div><div><span>Check-in rhythm</span><strong id="check-in"></strong><small>Increase if conditions worsen</small></div><div><span>Plan review</span><strong id="review-time"></strong><small>Reassess conditions and team</small></div></div>
           <div class="callout" id="callout"></div>

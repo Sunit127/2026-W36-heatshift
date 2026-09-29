@@ -9,3 +9,11 @@ test("optional sharing targets the validated API", () => {
   assert.match(app, /const sharePayload = \{/);
   assert.doesNotMatch(app, /body: JSON\.stringify\(currentPlan\)/);
 });
+
+test('frontend result and error states are keyboard reachable', () => {
+  assert.match(index, /aria-describedby="form-error"/);
+  assert.match(index, /id="form-error"[^>]*tabindex="-1"/);
+  assert.match(index, /id="result-title"[^>]*tabindex="-1"/);
+  assert.match(app, /result-title').focus/);
+  assert.match(app, /error\.focus/);
+});

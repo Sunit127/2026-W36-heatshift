@@ -39,6 +39,7 @@ function renderPlan(plan) {
   $('#result').hidden = false;
 
   $('#result-title').textContent = plan.shiftName;
+  requestAnimationFrame(() => $('#result-title').focus({ preventScroll: true }));
 
   const badge = $('#tier-badge');
   badge.textContent = plan.label;
@@ -279,6 +280,7 @@ function wireUpForm() {
     } catch (error) {
       error.textContent = error.message;
       error.hidden = false;
+      error.focus({ preventScroll: true });
       error.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   });
