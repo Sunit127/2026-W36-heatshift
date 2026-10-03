@@ -32,6 +32,14 @@ WINDOW_SECONDS = 60
 TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{20,64}$")
 hits: dict[str, list[float]] = {}
 
+SECURITY_HEADERS = {
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+}
+
 
 def configured_share_ttl() -> int:
     """Keep opt-in share retention bounded even when deployment config is malformed."""
@@ -169,7 +177,7 @@ def create_app():
             )
         ):
             # Reject oversized payloads before application parsing.
-            return JSONResponse({"detail": "Request body too large"}, status_code=413)
+            return JSONResponse({"detail": "Request body too large"}, status_code=413, headers=SECURITY_HEADERS)
 
         if request.method == "POST" and request.url.path == "/api/v1/plans":
             content_type = request.headers.get("content-type", "").lower()
@@ -177,6 +185,7 @@ def create_app():
                 return JSONResponse(
                     {"detail": "Content-Type must be application/json"},
                     status_code=415,
+                    headers=SECURITY_HEADERS,
                 )
 
         # CORS preflights and liveness probes should not consume the write quota.
@@ -194,22 +203,14 @@ def create_app():
                 return JSONResponse(
                     {"detail": "Rate limit exceeded"},
                     status_code=429,
-                    headers={"Retry-After": "60"},
+                    headers={**SECURITY_HEADERS, "Retry-After": "60"},
                 )
 
             recent_calls.append(now)
             hits[client_key] = recent_calls
 
         response = await call_next(request)
-        response.headers.update(
-            {
-                "Cache-Control": "no-store",
-                "X-Content-Type-Options": "nosniff",
-                "X-Frame-Options": "DENY",
-                "Referrer-Policy": "no-referrer",
-                "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
-            }
-        )
+        response.headers.update(SECURITY_HEADERS)
         return response
 
     @app.get("/healthz")

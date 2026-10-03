@@ -98,3 +98,25 @@ def test_health_and_preflight_do_not_consume_rate_limit(monkeypatch):
     assert preflight.status_code == 200
     assert client.get("/healthz").status_code == 200
     assert client.get("/healthz").status_code == 200
+
+
+def test_rejection_paths_keep_security_headers(monkeypatch):
+    oversized = client.post(
+        "/api/v1/plans",
+        headers={"content-type": "application/json", "content-length": "65537"},
+        content=b"{}",
+    )
+    assert oversized.status_code == 413
+    assert oversized.headers["x-content-type-options"] == "nosniff"
+    assert oversized.headers["cache-control"] == "no-store"
+
+    unsupported = client.post("/api/v1/plans", data="{}")
+    assert unsupported.status_code == 415
+    assert unsupported.headers["x-frame-options"] == "DENY"
+
+    monkeypatch.setattr("server.app.RATE_LIMIT", 1)
+    hits.clear()
+    assert client.get("/not-found").status_code == 404
+    limited = client.get("/not-found")
+    assert limited.status_code == 429
+    assert limited.headers["content-security-policy"].startswith("default-src")
