@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from datetime import datetime, timezone
 
 os.environ["HEATSHIFT_DB_PATH"] = "/tmp/heatshift-test.sqlite3"
 os.environ["HEATSHIFT_CORS_ORIGINS"] = "http://localhost:8080"
@@ -120,3 +121,31 @@ def test_rejection_paths_keep_security_headers(monkeypatch):
     limited = client.get("/not-found")
     assert limited.status_code == 429
     assert limited.headers["content-security-policy"].startswith("default-src")
+
+
+def test_migrate_adopts_legacy_database_without_migration_ledger(monkeypatch, tmp_path):
+    """An existing pre-migration table must not make a fresh ledger crash."""
+    legacy_db = tmp_path / "legacy.sqlite3"
+    created_at = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(legacy_db) as connection:
+        connection.execute(
+            "CREATE TABLE plans (share_token TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at TEXT NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO plans(share_token,payload,created_at) VALUES(?,?,?)",
+            ("legacy-token", "{}", created_at),
+        )
+
+    monkeypatch.setattr("server.app.DB_PATH", legacy_db)
+    from server.app import migrate
+    migrate()
+
+    with sqlite3.connect(legacy_db) as connection:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(plans)")}
+        assert "expires_at" in columns
+        assert connection.execute(
+            "SELECT version FROM schema_migrations WHERE version=1"
+        ).fetchone() == (1,)
+        assert connection.execute(
+            "SELECT expires_at FROM plans WHERE share_token='legacy-token'"
+        ).fetchone()[0]

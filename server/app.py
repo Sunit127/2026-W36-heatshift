@@ -117,7 +117,7 @@ def migrate():
             is None
         ):
             c.execute(
-                "CREATE TABLE plans ("
+                "CREATE TABLE IF NOT EXISTS plans ("
                 "share_token TEXT PRIMARY KEY, "
                 "payload TEXT NOT NULL, "
                 "created_at TEXT NOT NULL, "
