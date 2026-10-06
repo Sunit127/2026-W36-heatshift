@@ -62,6 +62,30 @@ def test_validation_fails_closed():
     assert client.get("/api/v1/plans/not-a-token").status_code == 404
 
 
+def test_scalar_types_are_not_silently_coerced():
+    string_number = client.post(
+        "/api/v1/plans", json={**BASE_PLAN, "temperature": "34"}
+    )
+    boolean_number = client.post(
+        "/api/v1/plans", json={**BASE_PLAN, "duration": True}
+    )
+    string_boolean = client.post(
+        "/api/v1/plans", json={**BASE_PLAN, "acclimatized": "false"}
+    )
+    non_finite = client.post(
+        "/api/v1/plans",
+        content='{"shiftName":"Crew","startTime":"12:00","duration":4,'
+        '"temperature":NaN,"humidity":68,"intensity":"moderate",'
+        '"sun":"direct","ppe":"standard","acclimatized":false}',
+        headers={"content-type": "application/json"},
+    )
+
+    assert string_number.status_code == 422
+    assert boolean_number.status_code == 422
+    assert string_boolean.status_code == 422
+    assert non_finite.status_code == 422
+
+
 def test_unknown_fields_are_rejected():
     # Unknown payload keys should be rejected before persistence.
     response = client.post("/api/v1/plans", json={**BASE_PLAN, "unexpected": "value"})

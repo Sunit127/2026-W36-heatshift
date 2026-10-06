@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import secrets
@@ -70,6 +71,26 @@ class Plan(BaseModel):
     acclimatized: bool
     heatIndex: float | None = Field(default=None, ge=-100, le=100)
     tier: Literal["routine", "caution", "high", "severe"] | None = None
+
+    @field_validator("duration", "temperature", "humidity", "heatIndex", mode="before")
+    @classmethod
+    def require_finite_json_number(cls, value):
+        # Reject bools, numeric strings, NaN, and infinity instead of silently
+        # coercing a malformed or non-standard JSON value into stored plan data.
+        if value is None:
+            return value
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError("must be a JSON number")
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ValueError("must be finite")
+        return value
+
+    @field_validator("acclimatized", mode="before")
+    @classmethod
+    def require_json_boolean(cls, value):
+        if not isinstance(value, bool):
+            raise ValueError("must be a JSON boolean")
+        return value
 
     @field_validator("shiftName")
     @classmethod
