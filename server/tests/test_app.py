@@ -84,6 +84,8 @@ def test_scalar_types_are_not_silently_coerced():
     assert boolean_number.status_code == 422
     assert string_boolean.status_code == 422
     assert non_finite.status_code == 422
+    assert non_finite.json()["detail"][0]["loc"] == ["body", "temperature"]
+    assert "input" not in non_finite.json()["detail"][0]
 
 
 def test_unknown_fields_are_rejected():

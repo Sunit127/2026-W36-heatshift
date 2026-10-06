@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -186,6 +187,20 @@ def create_app():
         allow_headers=["Content-Type"],
         max_age=600,
     )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(_request: Request, exc: RequestValidationError):
+        # Do not reflect raw invalid values. Besides limiting data exposure, this
+        # keeps non-standard floats such as NaN from breaking JSON serialization.
+        details = [
+            {
+                "loc": error["loc"],
+                "msg": error["msg"],
+                "type": error["type"],
+            }
+            for error in exc.errors()
+        ]
+        return JSONResponse({"detail": details}, status_code=422)
 
     @app.middleware("http")
     async def hardening(request: Request, call_next):
