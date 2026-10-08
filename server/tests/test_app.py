@@ -95,6 +95,17 @@ def test_unknown_fields_are_rejected():
     assert "extra" in response.text.lower()
 
 
+def test_client_derived_values_are_rejected():
+    """Callers cannot smuggle untrusted planning conclusions into shared data."""
+    for field, value in (("heatIndex", 42), ("tier", "routine")):
+        response = client.post(
+            "/api/v1/plans",
+            json={**BASE_PLAN, field: value},
+        )
+        assert response.status_code == 422
+        assert response.json()["detail"][0]["type"] == "extra_forbidden"
+
+
 def test_expired_share_is_not_retrievable():
     token = "expired-share-token-123456"
     payload = '{"shiftName":"Expired"}'

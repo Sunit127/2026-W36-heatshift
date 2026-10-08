@@ -69,11 +69,11 @@ class Plan(BaseModel):
     sun: Literal["shade", "mixed", "direct"]
     ppe: Literal["breathable", "standard", "impermeable"]
 
+    # Accept only source observations. Derived heat-index and tier values are
+    # calculated by the offline client and must not be trusted or persisted.
     acclimatized: bool
-    heatIndex: float | None = Field(default=None, ge=-100, le=100)
-    tier: Literal["routine", "caution", "high", "severe"] | None = None
 
-    @field_validator("duration", "temperature", "humidity", "heatIndex", mode="before")
+    @field_validator("duration", "temperature", "humidity", mode="before")
     @classmethod
     def require_finite_json_number(cls, value):
         # Reject bools, numeric strings, NaN, and infinity instead of silently
