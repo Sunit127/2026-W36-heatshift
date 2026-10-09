@@ -39,7 +39,7 @@ _last_rate_cleanup = 0.0
 def prune_rate_limit_entries(now: float) -> None:
     """Bound in-memory rate-limit state even when clients rotate addresses."""
     global _last_rate_cleanup
-    if now - _last_rate_cleanup < WINDOW_SECONDS:
+    if now - _last_rate_cleanup < WINDOW_SECONDS and len(hits) <= MAX_TRACKED_CLIENTS:
         return
     _last_rate_cleanup = now
     for key, events in list(hits.items()):
