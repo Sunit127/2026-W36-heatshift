@@ -346,10 +346,11 @@ function wireUpActions() {
       if (!imported.length) throw new Error('no valid plans');
       const existing = loadPlans();
       const ids = new Set(existing.map((plan) => plan.id).filter(Boolean));
-      const additions = imported.map((plan) => ({
-        ...plan,
-        id: plan.id && !ids.has(plan.id) ? plan.id : crypto.randomUUID(),
-      }));
+      const additions = imported.map((plan) => {
+        const id = plan.id && !ids.has(plan.id) ? plan.id : crypto.randomUUID();
+        ids.add(id);
+        return { ...plan, id };
+      });
       persistPlans([...additions, ...existing].slice(0, 25));
       $('#save-status').textContent = 'Imported ' + additions.length + ' plan' + (additions.length === 1 ? '' : 's');
     } catch {
