@@ -31,8 +31,28 @@ def configured_rate_limit() -> int:
 
 RATE_LIMIT = configured_rate_limit()
 WINDOW_SECONDS = 60
+MAX_TRACKED_CLIENTS = 10_000
 TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{20,64}$")
 hits: dict[str, list[float]] = {}
+_last_rate_cleanup = 0.0
+
+def prune_rate_limit_entries(now: float) -> None:
+    """Bound in-memory rate-limit state even when clients rotate addresses."""
+    global _last_rate_cleanup
+    if now - _last_rate_cleanup < WINDOW_SECONDS:
+        return
+    _last_rate_cleanup = now
+    for key, events in list(hits.items()):
+        recent = [event for event in events if now - event < WINDOW_SECONDS]
+        if recent:
+            hits[key] = recent
+        else:
+            del hits[key]
+    if len(hits) > MAX_TRACKED_CLIENTS:
+        # Keep the newest keys if a burst creates more entries than the cap.
+        newest = sorted(hits.items(), key=lambda item: item[1][-1], reverse=True)
+        hits.clear()
+        hits.update(newest[:MAX_TRACKED_CLIENTS])
 
 SECURITY_HEADERS = {
     "Cache-Control": "no-store",
@@ -228,6 +248,7 @@ def create_app():
         should_limit = request.method != "OPTIONS" and request.url.path != "/healthz"
         if should_limit:
             now = time.monotonic()
+            prune_rate_limit_entries(now)
             client_key = request.client.host if request.client else "unknown"
             recent_calls = [
                 event
