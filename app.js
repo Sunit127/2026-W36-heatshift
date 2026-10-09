@@ -337,6 +337,28 @@ function wireUpActions() {
     URL.revokeObjectURL(anchor.href);
   };
 
+  $('#import-data').onclick = () => $('#import-file').click();
+  $('#import-file').addEventListener('change', async (event) => {
+    const [file] = event.target.files || [];
+    if (!file) return;
+    try {
+      const imported = safeParsePlans(await file.text());
+      if (!imported.length) throw new Error('no valid plans');
+      const existing = loadPlans();
+      const ids = new Set(existing.map((plan) => plan.id).filter(Boolean));
+      const additions = imported.map((plan) => ({
+        ...plan,
+        id: plan.id && !ids.has(plan.id) ? plan.id : crypto.randomUUID(),
+      }));
+      persistPlans([...additions, ...existing].slice(0, 25));
+      $('#save-status').textContent = 'Imported ' + additions.length + ' plan' + (additions.length === 1 ? '' : 's');
+    } catch {
+      $('#save-status').textContent = 'Import failed: choose a HeatShift JSON export';
+    } finally {
+      event.target.value = '';
+    }
+  });
+
   $('#clear-data').onclick = () => {
     if (confirm('Delete every HeatShift plan stored in this browser?')) {
       localStorage.removeItem(STORAGE_KEY);
