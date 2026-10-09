@@ -78,7 +78,12 @@ function isSavedPlan(value) {
 export function safeParsePlans(raw) {
   try {
     const value = JSON.parse(raw);
-    return Array.isArray(value) ? value.slice(0, 25).filter(isSavedPlan) : [];
+    const candidates = Array.isArray(value)
+      ? value
+      : value && Array.isArray(value.plans)
+        ? value.plans
+        : null;
+    return Array.isArray(candidates) ? candidates.slice(0, 25).filter(isSavedPlan) : [];
   } catch {
     return [];
   }
