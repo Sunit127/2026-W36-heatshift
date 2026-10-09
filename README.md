@@ -13,7 +13,7 @@ It is **not** a medical device, heat-exposure limit, or substitute for local reg
 
 ## Architecture
 
-HeatShift is a dependency-free static PWA. `logic.js` contains pure heat-index and planning logic; `app.js` owns DOM interactions and device-local persistence; `sw.js` caches the app shell. Plans are stored in browser `localStorage` and can be exported as JSON. There is no backend, analytics, location access, or third-party API.
+HeatShift has a dependency-free offline-first client and an optional FastAPI/SQLite team-sharing service. `logic.js` contains pure heat-index and planning logic; `app.js` owns DOM interactions and device-local persistence; `sw.js` caches the app shell. Plans stay in browser `localStorage` by default, can be exported and re-imported as validated JSON, and are sent to the service only after an explicit share action. There is no analytics, location access, or third-party API.
 
 ## Run
 
