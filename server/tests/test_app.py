@@ -186,3 +186,21 @@ def test_migrate_adopts_legacy_database_without_migration_ledger(monkeypatch, tm
         assert connection.execute(
             "SELECT expires_at FROM plans WHERE share_token='legacy-token'"
         ).fetchone()[0]
+
+def test_rate_limit_state_is_pruned_and_bounded(monkeypatch):
+    import server.app as module
+
+    hits.clear()
+    monkeypatch.setattr(module, "_last_rate_cleanup", 0.0)
+    monkeypatch.setattr(module, "MAX_TRACKED_CLIENTS", 2)
+    hits.update({
+        "stale-a": [0.0],
+        "stale-b": [0.0],
+        "fresh-a": [100.0],
+        "fresh-b": [101.0],
+        "fresh-c": [102.0],
+    })
+    module.prune_rate_limit_entries(120.0)
+
+    assert set(hits) == {"fresh-a", "fresh-b"} or set(hits) == {"fresh-b", "fresh-c"}
+    assert len(hits) == 2
