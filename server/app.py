@@ -31,6 +31,7 @@ def configured_rate_limit() -> int:
 
 RATE_LIMIT = configured_rate_limit()
 WINDOW_SECONDS = 60
+MAX_BODY_BYTES = 64 * 1024
 MAX_TRACKED_CLIENTS = 10_000
 TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{20,64}$")
 hits: dict[str, list[float]] = {}
@@ -61,6 +62,43 @@ SECURITY_HEADERS = {
     "Referrer-Policy": "no-referrer",
     "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
 }
+
+
+class RequestBodyTooLarge(Exception):
+    """Raised when the received HTTP body exceeds the configured hard limit."""
+
+
+class BodyLimitMiddleware:
+    """Enforce the body limit on received bytes, including chunked requests."""
+
+    def __init__(self, app, max_body_bytes: int):
+        self.app = app
+        self.max_body_bytes = max_body_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        received = 0
+
+        async def receive_limited():
+            nonlocal received
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > self.max_body_bytes:
+                    raise RequestBodyTooLarge
+            return message
+
+        try:
+            return await self.app(scope, receive_limited, send)
+        except RequestBodyTooLarge:
+            response = JSONResponse(
+                {"detail": "Request body too large"},
+                status_code=413,
+                headers=SECURITY_HEADERS,
+            )
+            return await response(scope, receive, send)
 
 
 def configured_share_ttl() -> int:
@@ -200,6 +238,7 @@ def create_app():
 
     raw_origins = os.getenv("HEATSHIFT_CORS_ORIGINS", "http://localhost:8080")
     origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+    app.add_middleware(BodyLimitMiddleware, max_body_bytes=MAX_BODY_BYTES)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
@@ -229,7 +268,7 @@ def create_app():
             content_length
             and (
                 not content_length.isdigit()
-                or int(content_length) > 65536
+                or int(content_length) > MAX_BODY_BYTES
             )
         ):
             # Reject oversized payloads before application parsing.

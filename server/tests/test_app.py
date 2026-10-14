@@ -56,6 +56,18 @@ def test_content_type_and_validation_fail_closed():
     unsupported = client.post("/api/v1/plans", data="{}")
     assert unsupported.status_code == 415
 
+def test_chunked_body_limit_does_not_trust_content_length():
+    response = client.post(
+        "/api/v1/plans",
+        headers={"content-type": "application/json"},
+        content=(b"x" * 8192 for _ in range(9)),
+    )
+
+    assert response.status_code == 413
+    assert response.json() == {"detail": "Request body too large"}
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
 def test_validation_fails_closed():
     response = client.post("/api/v1/plans", json={**BASE_PLAN, "temperature": 99})
     assert response.status_code == 422
