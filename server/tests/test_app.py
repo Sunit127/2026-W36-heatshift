@@ -6,7 +6,7 @@ os.environ["HEATSHIFT_DB_PATH"] = "/tmp/heatshift-test.sqlite3"
 os.environ["HEATSHIFT_CORS_ORIGINS"] = "http://localhost:8080"
 
 from fastapi.testclient import TestClient
-from server.app import DB_PATH, app, hits
+from server.app import DB_PATH, MAX_BODY_BYTES, app, hits
 
 client = TestClient(app)
 
@@ -56,11 +56,11 @@ def test_content_type_and_validation_fail_closed():
     unsupported = client.post("/api/v1/plans", data="{}")
     assert unsupported.status_code == 415
 
-def test_chunked_body_limit_does_not_trust_content_length():
+def test_body_limit_does_not_trust_content_length():
     response = client.post(
         "/api/v1/plans",
-        headers={"content-type": "application/json"},
-        content=(b"x" * 8192 for _ in range(9)),
+        headers={"content-type": "application/json", "content-length": "1"},
+        content=b"x" * (MAX_BODY_BYTES + 1),
     )
 
     assert response.status_code == 413
