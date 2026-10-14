@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sqlite3
 from datetime import datetime, timezone
@@ -6,7 +7,7 @@ os.environ["HEATSHIFT_DB_PATH"] = "/tmp/heatshift-test.sqlite3"
 os.environ["HEATSHIFT_CORS_ORIGINS"] = "http://localhost:8080"
 
 from fastapi.testclient import TestClient
-from server.app import DB_PATH, MAX_BODY_BYTES, app, hits
+from server.app import BodyLimitMiddleware, DB_PATH, MAX_BODY_BYTES, app, hits
 
 client = TestClient(app)
 
@@ -56,16 +57,37 @@ def test_content_type_and_validation_fail_closed():
     unsupported = client.post("/api/v1/plans", data="{}")
     assert unsupported.status_code == 415
 
-def test_body_limit_does_not_trust_content_length():
-    response = client.post(
-        "/api/v1/plans",
-        headers={"content-type": "application/json", "content-length": "1"},
-        content=b"x" * (MAX_BODY_BYTES + 1),
-    )
+def test_body_limit_counts_received_chunks():
+    messages = [
+        {
+            "type": "http.request",
+            "body": b"x" * MAX_BODY_BYTES,
+            "more_body": True,
+        },
+        {"type": "http.request", "body": b"x", "more_body": False},
+    ]
+    sent = []
 
-    assert response.status_code == 413
-    assert response.json() == {"detail": "Request body too large"}
-    assert response.headers["x-content-type-options"] == "nosniff"
+    async def receive():
+        return messages.pop(0)
+
+    async def send(message):
+        sent.append(message)
+
+    async def consume_body(_scope, limited_receive, _send):
+        while True:
+            message = await limited_receive()
+            if not message.get("more_body", False):
+                break
+
+    middleware = BodyLimitMiddleware(consume_body, MAX_BODY_BYTES)
+    asyncio.run(middleware({"type": "http"}, receive, send))
+
+    assert sent[0]["type"] == "http.response.start"
+    assert sent[0]["status"] == 413
+    headers = dict(sent[0]["headers"])
+    assert headers[b"x-content-type-options"] == b"nosniff"
+    assert b"Request body too large" in sent[1]["body"]
 
 
 def test_validation_fails_closed():
