@@ -64,12 +64,8 @@ SECURITY_HEADERS = {
 }
 
 
-class RequestBodyTooLarge(Exception):
-    """Raised when the received HTTP body exceeds the configured hard limit."""
-
-
 class BodyLimitMiddleware:
-    """Enforce the body limit on received bytes, including chunked requests."""
+    """Bound received bytes before FastAPI parses any request body."""
 
     def __init__(self, app, max_body_bytes: int):
         self.app = app
@@ -80,25 +76,31 @@ class BodyLimitMiddleware:
             return await self.app(scope, receive, send)
 
         received = 0
-
-        async def receive_limited():
-            nonlocal received
+        messages = []
+        while True:
             message = await receive()
-            if message["type"] == "http.request":
-                received += len(message.get("body", b""))
-                if received > self.max_body_bytes:
-                    raise RequestBodyTooLarge
-            return message
+            messages.append(message)
+            if message["type"] != "http.request":
+                break
 
-        try:
-            return await self.app(scope, receive_limited, send)
-        except RequestBodyTooLarge:
-            response = JSONResponse(
-                {"detail": "Request body too large"},
-                status_code=413,
-                headers=SECURITY_HEADERS,
-            )
-            return await response(scope, receive, send)
+            received += len(message.get("body", b""))
+            if received > self.max_body_bytes:
+                response = JSONResponse(
+                    {"detail": "Request body too large"},
+                    status_code=413,
+                    headers=SECURITY_HEADERS,
+                )
+                return await response(scope, receive, send)
+
+            if not message.get("more_body", False):
+                break
+
+        async def replay_receive():
+            if messages:
+                return messages.pop(0)
+            return await receive()
+
+        return await self.app(scope, replay_receive, send)
 
 
 def configured_share_ttl() -> int:

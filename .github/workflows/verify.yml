@@ -84,7 +84,11 @@ jobs:
             -H 'Content-Type: application/json' \
             -H 'Transfer-Encoding: chunked' \
             --data-binary @"${{ runner.temp }}/heatshift-oversized")
-          test "$oversized_status" = "413"
+          if [ "$oversized_status" != "413" ]; then
+            echo "Expected chunked oversized request to return 413; got $oversized_status"
+            cat "${{ runner.temp }}/heatshift-api.log"
+            exit 1
+          fi
           response=$(curl --fail --silent --request POST http://127.0.0.1:8000/api/v1/plans \
             -H 'Content-Type: application/json' \
             --data '{"shiftName":"CI smoke","startTime":"12:00","duration":4,"temperature":34,"humidity":68,"intensity":"moderate","sun":"direct","ppe":"standard","acclimatized":false}')
