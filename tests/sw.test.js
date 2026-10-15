@@ -12,3 +12,10 @@ test("service worker only caches the app shell and successful same-origin assets
   assert.match(serviceWorker, /Response\.error\(\)/);
   assert.match(serviceWorker, /dynamic\/API routes/);
 });
+
+test("service worker cleanup preserves unrelated origin caches", () => {
+  assert.match(
+    serviceWorker,
+    /key\.startsWith\(CACHE_PREFIX\) && key !== CACHE/,
+  );
+});
