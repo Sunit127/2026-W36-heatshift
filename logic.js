@@ -51,29 +51,42 @@ export function buildPlan(input) {
   return {...input,shiftName,startTime,temperature,humidity,duration,heatIndex:hi,tier,...config,checklist,timeline,createdAt:new Date().toISOString()};
 }
 
-function isSavedPlan(value) {
-  if (!value || typeof value !== 'object') return false;
-  const text = (key, max) => typeof value[key] === 'string' && value[key].trim().length > 0 && value[key].length <= max;
-  if (!text('shiftName', 60) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value.startTime)) return false;
-  if (!Number.isFinite(value.duration) || value.duration < 1 || value.duration > 16) return false;
-  if (!Number.isFinite(value.temperature) || value.temperature < 10 || value.temperature > 60) return false;
-  if (!Number.isFinite(value.humidity) || value.humidity < 5 || value.humidity > 100) return false;
-  if (!Number.isFinite(value.heatIndex) || value.heatIndex < -100 || value.heatIndex > 100) return false;
-  if (!['light', 'moderate', 'heavy'].includes(value.intensity)) return false;
-  if (!['shade', 'mixed', 'direct'].includes(value.sun)) return false;
-  if (!['breathable', 'standard', 'impermeable'].includes(value.ppe)) return false;
-  if (typeof value.acclimatized !== 'boolean' || !['routine', 'caution', 'high', 'severe'].includes(value.tier)) return false;
-  if (!text('label', 80) || !text('summary', 400) || !text('callout', 500)) return false;
-  if (!Number.isInteger(value.check) || value.check < 1 || value.check > 240) return false;
-  if (!Number.isInteger(value.review) || value.review < 1 || value.review > 240) return false;
-  if (!Array.isArray(value.checklist) || value.checklist.length > 20
-    || !value.checklist.every((item) => typeof item === 'string' && item.length <= 240)) return false;
-  if (!Array.isArray(value.timeline) || value.timeline.length > 80
-    || !value.timeline.every((item) => item && typeof item === 'object'
-      && typeof item.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time)
-      && typeof item.label === 'string' && item.label.length <= 160)) return false;
-  if (value.createdAt !== undefined && (typeof value.createdAt !== 'string' || !Number.isFinite(Date.parse(value.createdAt)))) return false;
-  return value.id === undefined || (typeof value.id === 'string' && value.id.length <= 100);
+function normalizeSavedPlan(value) {
+  if (!value || typeof value !== 'object') return null;
+
+  // Imported and locally stored plans may contain stale or tampered derived
+  // guidance. Validate only source observations, then rebuild every conclusion
+  // with the current planner rules before showing it again.
+  if (typeof value.shiftName !== 'string' || value.shiftName.trim().length < 1 || value.shiftName.length > 60) return null;
+  if (typeof value.startTime !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value.startTime)) return null;
+  if (!Number.isFinite(value.duration) || value.duration < 1 || value.duration > 16) return null;
+  if (!Number.isFinite(value.temperature) || value.temperature < 10 || value.temperature > 60) return null;
+  if (!Number.isFinite(value.humidity) || value.humidity < 5 || value.humidity > 100) return null;
+  if (!['light', 'moderate', 'heavy'].includes(value.intensity)) return null;
+  if (!['shade', 'mixed', 'direct'].includes(value.sun)) return null;
+  if (!['breathable', 'standard', 'impermeable'].includes(value.ppe)) return null;
+  if (typeof value.acclimatized !== 'boolean') return null;
+  if (value.createdAt !== undefined && (typeof value.createdAt !== 'string' || !Number.isFinite(Date.parse(value.createdAt)))) return null;
+  if (value.id !== undefined && (typeof value.id !== 'string' || value.id.length > 100)) return null;
+
+  try {
+    const rebuilt = buildPlan({
+      shiftName: value.shiftName,
+      startTime: value.startTime,
+      duration: value.duration,
+      temperature: value.temperature,
+      humidity: value.humidity,
+      intensity: value.intensity,
+      sun: value.sun,
+      ppe: value.ppe,
+      acclimatized: value.acclimatized,
+    });
+    if (value.createdAt !== undefined) rebuilt.createdAt = value.createdAt;
+    if (value.id !== undefined) rebuilt.id = value.id;
+    return rebuilt;
+  } catch {
+    return null;
+  }
 }
 export function safeParsePlans(raw) {
   try {
@@ -83,7 +96,7 @@ export function safeParsePlans(raw) {
       : value && Array.isArray(value.plans)
         ? value.plans
         : null;
-    return Array.isArray(candidates) ? candidates.slice(0, 25).filter(isSavedPlan) : [];
+    return Array.isArray(candidates) ? candidates.slice(0, 25).map(normalizeSavedPlan).filter(Boolean) : [];
   } catch {
     return [];
   }
