@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'heatshift-';
-const CACHE = `${CACHE_PREFIX}v5`;
+const CACHE = `${CACHE_PREFIX}v6`;
 const ASSETS = [
   './',
   './index.html',
@@ -29,9 +29,11 @@ function isAppRequest(request) {
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => {
-      self.skipWaiting();
-    }),
+    caches.open(CACHE)
+      .then((cache) => cache.addAll(ASSETS))
+      .then(() => {
+        self.skipWaiting();
+      }),
   );
 });
 
@@ -62,24 +64,36 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
+  const cacheKey = new Request(new URL(url.pathname, APP_ORIGIN));
+
+  // Prefer the current deployment while online, then use the scoped app-shell
+  // cache when the network is unavailable. This prevents installed clients
+  // from remaining indefinitely on stale safety or privacy guidance.
+  event.respondWith((async () => {
+    let response;
+    try {
+      response = await fetch(event.request);
+    } catch {
+      const cached = await caches.match(cacheKey);
       if (cached) {
         return cached;
       }
+      if (isAppNavigation) {
+        return (await caches.match(new URL('./index.html', self.location.href).pathname))
+          || Response.error();
+      }
+      return Response.error();
+    }
 
-      return fetch(event.request).then((response) => {
-        if (isStaticAsset && response.ok && response.type === 'basic') {
-          caches.open(CACHE)
-            .then((cache) => cache.put(event.request, response.clone()))
-            .catch(() => {});
-        }
-        return response;
-      }).catch(() => (
-        isAppNavigation
-          ? caches.match(new URL('./index.html', self.location.href).pathname)
-          : Response.error()
-      ));
-    }),
-  );
+    if (response.ok && response.type === 'basic') {
+      try {
+        const cache = await caches.open(CACHE);
+        await cache.put(cacheKey, response.clone());
+      } catch {
+        // A cache quota failure must not hide a valid network response.
+      }
+    }
+
+    return response;
+  })());
 });
