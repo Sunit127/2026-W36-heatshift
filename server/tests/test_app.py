@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sqlite3
+import time
 from datetime import datetime, timezone
 
 os.environ["HEATSHIFT_DB_PATH"] = "/tmp/heatshift-test.sqlite3"
@@ -238,3 +239,35 @@ def test_rate_limit_state_is_pruned_and_bounded(monkeypatch):
 
     assert set(hits) == {"fresh-a", "fresh-b"} or set(hits) == {"fresh-b", "fresh-c"}
     assert len(hits) == 2
+
+
+def test_idle_retention_cleanup_removes_expired_shares(monkeypatch):
+    import server.app as module
+
+    token = "idle-expired-token-12345"
+    monkeypatch.setattr(module, "CLEANUP_INTERVAL_SECONDS", 0.01)
+    with TestClient(module.create_app()):
+        # Insert after startup migration so only the periodic idle loop can purge it.
+        with module.db() as connection:
+            connection.execute(
+                "INSERT OR REPLACE INTO plans(share_token,payload,created_at,expires_at) "
+                "VALUES(?,?,?,?)",
+                (
+                    token,
+                    "{}",
+                    "2020-01-01T00:00:00+00:00",
+                    "2020-01-02T00:00:00+00:00",
+                ),
+            )
+
+        for _attempt in range(50):
+            with module.db() as connection:
+                remaining = connection.execute(
+                    "SELECT 1 FROM plans WHERE share_token=?",
+                    (token,),
+                ).fetchone()
+            if remaining is None:
+                break
+            time.sleep(0.01)
+
+    assert remaining is None

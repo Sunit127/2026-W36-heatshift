@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import math
 import os
 import re
 import secrets
 import sqlite3
 import time
+from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
@@ -16,6 +19,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = Path(os.getenv("HEATSHIFT_DB_PATH", "server/heatshift.sqlite3"))
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -113,6 +118,18 @@ def configured_share_ttl() -> int:
 
 
 SHARE_TTL_SECONDS = configured_share_ttl()
+
+
+def configured_cleanup_interval() -> int:
+    """Bound idle retention cleanup frequency to a practical operator range."""
+    try:
+        value = int(os.getenv("HEATSHIFT_CLEANUP_INTERVAL_SECONDS", "3600"))
+    except ValueError:
+        value = 3600
+    return max(60, min(value, 24 * 60 * 60))
+
+
+CLEANUP_INTERVAL_SECONDS = configured_cleanup_interval()
 
 
 class Plan(BaseModel):
@@ -229,6 +246,33 @@ def migrate():
         purge_expired(c)
 
 
+def cleanup_expired() -> None:
+    """Delete expired shares even when no user request reaches the service."""
+    with db() as connection:
+        purge_expired(connection)
+
+
+async def retention_cleanup_loop() -> None:
+    while True:
+        await asyncio.sleep(CLEANUP_INTERVAL_SECONDS)
+        try:
+            await asyncio.to_thread(cleanup_expired)
+        except Exception:
+            # A transient cleanup failure must not stop the API or future attempts.
+            logger.exception("HeatShift retention cleanup failed")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    cleanup_task = asyncio.create_task(retention_cleanup_loop())
+    try:
+        yield
+    finally:
+        cleanup_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await cleanup_task
+
+
 def create_app():
     migrate()
     app = FastAPI(
@@ -236,6 +280,7 @@ def create_app():
         version="1.0.0",
         docs_url=None,
         redoc_url=None,
+        lifespan=lifespan,
     )
 
     raw_origins = os.getenv("HEATSHIFT_CORS_ORIGINS", "http://localhost:8080")

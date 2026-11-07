@@ -8,13 +8,13 @@ pip install -r server/requirements.txt
 uvicorn server.app:app --host 127.0.0.1 --port 8000
 ```
 
-Use a persistent SQLite path, narrow CORS origins, HTTPS termination, and a reverse proxy that excludes plan bodies from logs. Share tokens are bearer capabilities and expire after 30 days by default; configure `HEATSHIFT_SHARE_TTL_SECONDS` between 5 minutes and 365 days when a different retention window is justified. Expired shares are rejected and purged during service activity. Rotate/delete the database if exposed. The API is a planning aid and makes no medical or regulatory determination. It accepts source conditions only and rejects client-supplied `heatIndex` or `tier` conclusions so untrusted derived guidance cannot be stored as team data.
+Use a persistent SQLite path, narrow CORS origins, HTTPS termination, and a reverse proxy that excludes plan bodies from logs. Share tokens are bearer capabilities and expire after 30 days by default; configure `HEATSHIFT_SHARE_TTL_SECONDS` between 5 minutes and 365 days when a different retention window is justified. Expired shares are rejected during reads and purged during service activity and by an idle background cleanup loop. Configure `HEATSHIFT_CLEANUP_INTERVAL_SECONDS` between 60 seconds and 24 hours (one hour by default). Rotate/delete the database if exposed. The API is a planning aid and makes no medical or regulatory determination. It accepts source conditions only and rejects client-supplied `heatIndex` or `tier` conclusions so untrusted derived guidance cannot be stored as team data.
 
 Endpoints: `GET /healthz`, `POST /api/v1/plans`, `GET /api/v1/plans/{share_token}`, and `DELETE /api/v1/plans/{share_token}` for explicit share deletion. Request bodies are capped at 64 KiB by received byte count, including streamed/chunked requests.
 
 ## Backup and restore
 
-Retention cleanup is request-driven. For a long-running deployment, schedule a maintenance request or an operator job and monitor database size. Back up the SQLite file while the service is stopped (or use SQLite’s online backup command), keep backups access-controlled, and test restores:
+Retention cleanup runs in-process every hour by default and also during relevant requests. Monitor database size; multi-process deployments may run the idempotent cleanup in each worker. Back up the SQLite file while the service is stopped (or use SQLite’s online backup command), keep backups access-controlled, and test restores:
 
 ```bash
 mkdir -p backups
