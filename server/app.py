@@ -181,8 +181,13 @@ class Plan(BaseModel):
 
 
 def db():
-    connection = sqlite3.connect(DB_PATH)
+    connection = sqlite3.connect(DB_PATH, timeout=5)
     connection.row_factory = sqlite3.Row
+    # WAL lets health/read requests continue while an opt-in share is written;
+    # the busy timeout turns short writer contention into a retry window instead
+    # of an avoidable 500/503 for a small team deployment.
+    connection.execute("PRAGMA busy_timeout=5000")
+    connection.execute("PRAGMA journal_mode=WAL")
     connection.execute("PRAGMA foreign_keys=ON")
     return connection
 
