@@ -35,6 +35,14 @@ def test_health_and_headers():
     assert response.headers["cache-control"] == "no-store"
 
 
+def test_sqlite_connections_use_contention_safe_pragmas():
+    from server import app as module
+
+    with module.db() as connection:
+        assert connection.execute("PRAGMA busy_timeout").fetchone()[0] == 5000
+        assert connection.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
+
+
 def test_create_and_fetch():
     response = client.post("/api/v1/plans", json=BASE_PLAN)
     assert response.status_code == 201
