@@ -18,3 +18,11 @@ test('frontend result and error states are keyboard reachable', () => {
   assert.ok(app.includes("$('#result-title').focus"));
   assert.ok(app.includes('error.focus'));
 });
+
+test('optional team requests have a bounded network timeout', () => {
+  assert.match(app, /function fetchWithTimeout\(input, init = \{\}/);
+  assert.match(app, /new AbortController\(\)/);
+  assert.match(app, /NETWORK_TIMEOUT_MS = 10_000/);
+  assert.match(app, /fetchWithTimeout\(endpoint, \{/);
+  assert.match(app, /clearTimeout\(timeoutId\)/);
+});

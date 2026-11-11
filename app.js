@@ -5,7 +5,19 @@ const form = $('#shift-form');
 const STORAGE_KEY = 'heatshift-plans-v1';
 const API_BASE = globalThis.HEATSHIFT_API_BASE || '';
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const NETWORK_TIMEOUT_MS = 10_000;
 let currentPlan = null;
+
+async function fetchWithTimeout(input, init = {}) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), NETWORK_TIMEOUT_MS);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 function values() {
   const formData = new FormData(form);
@@ -250,7 +262,7 @@ async function sharePlan() {
       ppe,
       acclimatized,
     };
-    const response = await fetch(endpoint, {
+    const response = await fetchWithTimeout(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sharePayload),
