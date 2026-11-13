@@ -1,3 +1,11 @@
+export function nextQuarterHour(value = new Date()) {
+  const rounded = new Date(value);
+  if (!Number.isFinite(rounded.getTime())) throw new TypeError('Date must be valid');
+  rounded.setSeconds(0, 0);
+  rounded.setMinutes(Math.ceil(rounded.getMinutes() / 15) * 15);
+  return rounded;
+}
+
 export function heatIndexC(tempC, humidity) {
   if (!Number.isFinite(tempC) || !Number.isFinite(humidity)) throw new TypeError('Temperature and humidity must be numbers');
   const t = tempC * 9 / 5 + 32;

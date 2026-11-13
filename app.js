@@ -1,4 +1,4 @@
-import { buildPlan, safeParsePlans } from './logic.js';
+import { buildPlan, nextQuarterHour, safeParsePlans } from './logic.js';
 
 const $ = (selector) => document.querySelector(selector);
 const form = $('#shift-form');
@@ -36,8 +36,7 @@ function values() {
 }
 
 function setDefaults() {
-  const now = new Date();
-  now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15);
+  const now = nextQuarterHour();
 
   form.elements.startTime.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes() % 60).padStart(2, '0')}`;
   form.elements.duration.value = '8';

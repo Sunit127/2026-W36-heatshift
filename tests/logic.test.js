@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {heatIndexC,buildPlan,safeParsePlans} from '../logic.js';
+import test from 'node:test';import assert from 'node:assert/strict';import {heatIndexC,buildPlan,nextQuarterHour,safeParsePlans} from '../logic.js';
 test('heat index returns air temperature below formula threshold',()=>assert.equal(heatIndexC(24,50),24));
 test('heat index rises in hot humid conditions',()=>assert.ok(heatIndexC(35,70)>45));
 test('heavy direct work with impermeable PPE escalates tier',()=>{const p=buildPlan({shiftName:'Test',startTime:'12:00',duration:4,temperature:38,humidity:60,intensity:'heavy',sun:'direct',ppe:'impermeable',acclimatized:false});assert.equal(p.tier,'severe');assert.ok(p.checklist.some(x=>x.includes('PPE')));});
@@ -52,4 +52,12 @@ test('planner rejects values outside the UI and backend contract', () => {
   assert.throws(() => buildPlan({...valid, sun:'unknown'}), /sun exposure/);
   assert.throws(() => buildPlan({...valid, ppe:'unknown'}), /clothing or PPE/);
   assert.throws(() => buildPlan({...valid, acclimatized:'false'}), /acclimatized/);
+});
+
+test('quarter-hour defaults carry across hour and day boundaries', () => {
+  const beforeHour = new Date('2026-11-12T12:59:00.000Z');
+  const beforeDay = new Date('2026-11-12T23:59:00.000Z');
+  assert.equal(nextQuarterHour(beforeHour).toISOString(), '2026-11-12T13:00:00.000Z');
+  assert.equal(nextQuarterHour(beforeDay).toISOString(), '2026-11-13T00:00:00.000Z');
+  assert.equal(beforeHour.toISOString(), '2026-11-12T12:59:00.000Z');
 });
