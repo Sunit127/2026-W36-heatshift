@@ -33,6 +33,8 @@ def test_health_and_headers():
     # API responses should carry hardening headers.
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["cache-control"] == "no-store"
+    assert response.headers["permissions-policy"] == "camera=(), geolocation=(), microphone=()"
+    assert response.headers["x-permitted-cross-domain-policies"] == "none"
 
 
 def test_sqlite_connections_use_contention_safe_pragmas():
